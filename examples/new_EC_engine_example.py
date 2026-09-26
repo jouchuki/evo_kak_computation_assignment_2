@@ -129,7 +129,7 @@ def main() -> None:
     console.log(f"worst = {ea.get_solution('worst', only_alive=False)}")
 
     # Population API examples
-    db_pop = ea._fetch(only_alive=False)
+    db_pop = ea.fetch(only_alive=False)
     top_10 = db_pop.best(sort="max", attribute="fitness_", n=10)
     console.log(f"top-10 from DB = {top_10}")
 

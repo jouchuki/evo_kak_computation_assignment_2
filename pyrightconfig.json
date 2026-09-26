@@ -16,5 +16,6 @@
     "reportUnknownVariableType": false,
     "reportUnknownArgumentType": false, // + PIL
     // -------------------------------------------------------------------- //
-    "reportUnknownLambdaType": false
+    "reportUnknownLambdaType": false,
+    "extraPaths": ["assignments/assignment_2"]
 }
