@@ -4,7 +4,7 @@ SEEDS: [42, 321]
 ROBOT: turtle
 WORLD: OlympicArena
 SPAWN_POS: [0.0, 0.0, 0.1]
-SIM_DURATION: 15.0
+SIM_DURATION: 60.0
 MODE: simple
 HIDDEN_SIZE: 20
 
