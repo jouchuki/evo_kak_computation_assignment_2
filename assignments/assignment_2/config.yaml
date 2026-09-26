@@ -6,9 +6,9 @@ WORLD: OlympicArena
 SPAWN_POS: [0.0, 0.0, 0.1]
 SIM_DURATION: 15.0
 MODE: simple
-HIDDEN_SIZE: 6
+HIDDEN_SIZE: 20
 
 TARGET_POPULATION_SIZE: 64
-NUM_STEPS: 100
+NUM_STEPS: 50
 # Separate from the previous run. Change this name for another saved run.
 RUN_NAME: large_pop64_gen100

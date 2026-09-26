@@ -104,8 +104,9 @@ class RobotSimulation:
         self.HIDDEN_SIZE: int = settings.HIDDEN_SIZE
 
         # output == amount of hinges of a robot, input == all input channels, i will change them
+        # actually i might be wrong about input
         # now. we will see
-        self.INPUT_SIZE = len(self.data.qpos)
+        self.INPUT_SIZE = len(self.data.qpos) + len(self.data.qvel)
         self.OUTPUT_SIZE = self.model.nu
 
     def nn_controller(
