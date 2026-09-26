@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from settings import settings, ExperimentConfig, ViewerTypes
 from ariel.simulation.environments import BaseWorld, SimpleFlatWorld, RuggedTerrainWorld, AmphitheatreTerrainWorld, OlympicArena, CraterTerrainWorld
 from ariel.body_phenotypes.robogen_lite.prebuilt_robots.john_set import (
@@ -54,16 +56,32 @@ ROBOT_TYPES = {
     "centipede_5": centipede_5,
 }
 
+TARGET_POSITIONS: dict[str, tuple[float, float, float]] = {
+    "SimpleFlatWorld": (2.0, 0.0, 0.1),
+    "RuggedTerrainWorld": (2.0, 0.0, 0.1),
+    "CraterTerrainWorld": (2.0, 0.0, 0.1),
+    "AmphitheatreTerrainWorld": (3.5, 0.0, 0.1),
+    "OlympicArena": (5.42, 0.0, 0.506),
+}
+
 class RobotSimulation:
-    def __init__(self, settings: ExperimentConfig = settings) -> None:
+    def __init__(
+        self,
+        settings: ExperimentConfig = settings,
+        *,
+        output_folder: Path | None = None,
+        rng: np.random.Generator | None = None,
+    ) -> None:
         self.settings = settings
+        self.output_folder = output_folder if output_folder is not None else settings.DATA
+        self.rng = rng if rng is not None else np.random.default_rng()
 
         self.world: BaseWorld = WORLD_TYPES[self.settings.WORLD]()
         self.robot: CoreModule = ROBOT_TYPES[self.settings.ROBOT]()
 
         # --- EXPERIMENT CONSTANTS --- #
         self.SPAWN_POS: list[float] = settings.SPAWN_POS  # where the robot starts
-        self.TARGET_POSITION: list[float] = settings.TARGET_POSITION  # where it should end up
+        self.TARGET_POSITION: tuple[float, float, float] = TARGET_POSITIONS[self.settings.WORLD]  # where it should end up
         self.SIM_DURATION: float = settings.SIM_DURATION  # seconds of simulated time per evaluation
         self.MODE: ViewerTypes = settings.MODE  # see run_experiment() for the options
 
@@ -152,7 +170,7 @@ class RobotSimulation:
         target = np.asarray(self.TARGET_POSITION)
         return float(np.linalg.norm(final_position[:2] - target[:2]))
 
-    def run_experiment(self, ind_weights: list[npt.NDArray[np.float64]] | None = None, mode: ViewerTypes = settings.MODE) -> float:
+    def run_experiment(self, ind_weights: list[npt.NDArray[np.float64]] | None = None, mode: ViewerTypes | None = None) -> float:
         """Set up the world, run one simulation, and return the fitness.
 
         This is the function your EA calls once per individual, with `mode` set
@@ -163,6 +181,9 @@ class RobotSimulation:
         float
             The fitness of this run. Lower is better.
         """
+
+        if mode is None:
+            mode = self.MODE
 
         # TODO: clear it a little of the clutter
 
@@ -181,7 +202,10 @@ class RobotSimulation:
         if ind_weights is not None:
             weights = ind_weights
         else:
-            weights = make_random_weights(self.INPUT_SIZE, self.OUTPUT_SIZE)
+            weights = make_random_weights(
+                self.INPUT_SIZE, self.OUTPUT_SIZE, self.rng,
+                hidden_size=self.HIDDEN_SIZE,
+            )
 
 
         def control_callback(m: mj.MjModel, d: mj.MjData) -> None:
@@ -213,11 +237,11 @@ class RobotSimulation:
                 simple_runner(self.model, self.data, duration=self.SIM_DURATION)
             case "video":
                 # Render to an mp4 - for the figures in your report.
-                recorder = VideoRecorder(output_folder=str(settings.DATA / "__videos__"))
+                recorder = VideoRecorder(output_folder=str(self.output_folder / "__videos__"))
                 video_renderer(
                     self.model,
                     self.data,
-                    duration=settings.SIM_DURATION,
+                    duration=self.SIM_DURATION,
                     video_recorder=recorder,
                 )
             case "frame":
@@ -237,7 +261,7 @@ class RobotSimulation:
 
         console.log(f"start  : {np.round(initial_position, 3)}")
         console.log(f"end    : {np.round(final_position, 3)}")
-        console.log(f"target : {np.round(settings.TARGET_POSITION, 3)}")
+        console.log(f"target : {np.round(self.TARGET_POSITION, 3)}")
         console.log(f"fitness: {fitness:.4f}   (lower is better)")
 
         return fitness

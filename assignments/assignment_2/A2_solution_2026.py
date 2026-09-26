@@ -24,18 +24,10 @@ Change MODE below to switch between an interactive viewer, a headless run,
 a rendered video, or a single frame.
 """
 
-# Local libraries (ARIEL)
-from ariel.ec import set_seed
-
 from settings import settings
+import numpy as np
 
-# --- RANDOM GENERATOR SETUP --- #
-# Fix the seed while you are debugging.
-# Report results over MULTIPLE seeds.
-# ariel.ec's own generators/mutators/crossover draw from a separate,
-# package-level RNG. Reseed it too if you build your EA on ariel.ec,
-# or every one of your "multiple seeds" runs the same variation operators.
-set_seed(settings.SEED)
+# Each RobotEA seeds its RNGs before creating its population.
 
 # --- DATA SETUP --- #
 SCRIPT_NAME = settings.SCRIPT_NAME
@@ -101,15 +93,37 @@ DATA.mkdir(parents=True, exist_ok=True)
 
 
 def main() -> None:
-    """Run a single demo evaluation with a randomly-weighted controller."""
-    # A quick look at the size of the problem you are about to search.
-
+    """Run independent evolution seeds on one shared terrain."""
+    from robot_ea import RobotEA
     from simulation import RobotSimulation
 
-    sim = RobotSimulation()
-    score = sim.run_experiment()
+    if not settings.SEEDS:
+        raise ValueError("SEEDS must contain at least one seed")
+    if len(set(settings.SEEDS)) != len(settings.SEEDS):
+        raise ValueError("SEEDS must be unique so run folders cannot collide")
 
-    print("score:", score)
+    # Construct terrain once; run_experiment resets physics for each candidate.
+    simulation = RobotSimulation(settings)
+    best_scores: list[float] = []
+    for seed in settings.SEEDS:
+        run_dir = settings.DATA / f"seed_{seed}"
+        print(f"Starting seed {seed}; output: {run_dir}")
+        ea = RobotEA(
+            run_dir,
+            target_population_size=settings.TARGET_POPULATION_SIZE,
+            num_steps=settings.NUM_STEPS,
+            seed=seed,
+            simulation=simulation,
+        )
+        ea.run()
+        best = ea.ea.get_solution("best", only_alive=False)
+        best_scores.append(float(best.fitness))
+        ea.ea.engine.dispose()
+
+    print("Best fitness by seed:", dict(zip(settings.SEEDS, best_scores)))
+    print(f"Mean best fitness: {np.mean(best_scores):.6f}")
+    if len(best_scores) > 1:
+        print(f"Sample standard deviation: {np.std(best_scores, ddof=1):.6f}")
 
 if __name__ == "__main__":
     main()
