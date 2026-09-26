@@ -134,7 +134,7 @@ class RobotSimulation:
 
         # --- INPUTS ---------------------------------------------------------- #
         # Bare qpos - the simplest choice, not necessarily a good one.
-        inputs = data.qpos
+        inputs = np.concatenate((data.qpos, data.qvel))
 
         # --- FORWARD PASS ----------------------------------------------------- #
         layer1 = np.tanh(inputs @ w1)
