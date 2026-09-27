@@ -3,7 +3,7 @@ from pydantic import Field
 # import numpy as np
 from pathlib import Path
 import yaml
-from assignment_types import AllowedRobotTypes, AllowedWorldTypes, CrossoverType, FitnessType, ViewerTypes
+from assignment_types import AllowedRobotTypes, AllowedWorldTypes, CrossoverType, FitnessType, MutateType, ViewerTypes
 
 class ExperimentConfig(BaseSettings):
 
@@ -36,8 +36,11 @@ class ExperimentConfig(BaseSettings):
     CROSSOVER_SWAP_PROB: float = Field(default=0.5, ge=0.0, le=1.0)
 
     # mutation settings
-    MUTATION_PROB: float = 0.2
-    MUTATION_STD: float = 0.5
+    MUTATION_TYPE: MutateType = "gaussian"
+    MUTATION_PROB: float = Field(default=0.2, ge=0.0, le=1.0)
+    MUTATION_STD: float = Field(default=0.5, ge=0.0, allow_inf_nan=False)
+    MUTATION_LOW: float = Field(default=-1.0, allow_inf_nan=False)
+    MUTATION_HIGH: float = Field(default=1.0, allow_inf_nan=False)
 
     @property
     def SCRIPT_NAME(self) -> str:

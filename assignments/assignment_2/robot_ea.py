@@ -11,7 +11,6 @@ from ariel.ec import (
     EA,
     EAOperation,
     Individual,
-    FloatMutator,
     # IntegersGenerator,
     Population,
     config,
@@ -26,7 +25,7 @@ import numpy as np
 from utils import make_random_weights, flatten_weights, unflatten_weights
 from simulation import RobotSimulation
 from settings import settings
-from factories import CrossoverFactory
+from factories import CrossoverFactory, MutateFactory
 
 install()
 console = Console()
@@ -69,11 +68,21 @@ class RobotEA:
         self.simulation.output_folder = config_output_folder
         self.simulation.rng = self.rng
 
+        # CROSSOVER
         experiment_settings = self.simulation.settings
         self._crossover = CrossoverFactory(
             experiment_settings.CROSSOVER_TYPE,
             n_points=experiment_settings.CROSSOVER_N_POINTS,
             swap_probability=experiment_settings.CROSSOVER_SWAP_PROB,
+        )
+
+        # MUTATION
+        self._mutate = MutateFactory(
+            experiment_settings.MUTATION_TYPE,
+            probability=experiment_settings.MUTATION_PROB,
+            std=experiment_settings.MUTATION_STD,
+            low=experiment_settings.MUTATION_LOW,
+            high=experiment_settings.MUTATION_HIGH,
         )
 
         # TODO: move all the model and world building logic here basically so that i can have access
@@ -158,16 +167,13 @@ class RobotEA:
             child_b.genotype = [float(gene) for gene in g_b]
             child_b.tags = {"mutate": True}
 
+            # we add children here, then remove at survivor selection stage
             population.extend([child_a, child_b])
         return population
 
     def mutate(self, population: Population) -> Population:
         for ind in population.where(lambda ind: bool(ind.tags.get("mutate", False))):
-            ind.genotype = FloatMutator.gaussian(
-                individual=cast(Genotype, ind.genotype),
-                std=settings.MUTATION_STD,
-                mutation_probability=settings.MUTATION_PROB,
-            )
+            ind.genotype = self._mutate(cast(Genotype, ind.genotype))
             ind.requires_eval = True
             ind.tags = {"mutate": False}
         return population

@@ -2,5 +2,6 @@
 
 from .fitness import FitnessFactory
 from .crossover import CrossoverFactory
+from .mutate import MutateFactory
 
-__all__ = ["FitnessFactory", "CrossoverFactory"]
+__all__ = ["FitnessFactory", "CrossoverFactory", "MutateFactory"]

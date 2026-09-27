@@ -19,3 +19,10 @@ FITNESS_TYPE: baseline
 CROSSOVER_TYPE: one_point
 CROSSOVER_N_POINTS: 2      # Used only by n_point.
 CROSSOVER_SWAP_PROB: 0.5  # Per-gene swap probability; used only by uniform.
+
+# Available: gaussian, uniform_reset, "none".
+MUTATION_TYPE: gaussian
+MUTATION_PROB: 0.2       # Probability per weight.
+MUTATION_STD: 0.5        # Gaussian noise standard deviation.
+MUTATION_LOW: -1.0      # Uniform reset lower bound (inclusive).
+MUTATION_HIGH: 1.0      # Uniform reset upper bound (exclusive).
