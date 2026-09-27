@@ -12,3 +12,5 @@ TARGET_POPULATION_SIZE: 64
 NUM_STEPS: 50
 # Separate from the previous run. Change this name for another saved run.
 RUN_NAME: large_pop64_gen100
+
+FITNESS_TYPE: baseline

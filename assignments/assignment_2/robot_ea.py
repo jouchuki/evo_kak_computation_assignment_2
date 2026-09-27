@@ -104,7 +104,7 @@ class RobotEA:
                 cast(list[float], ind.genotype),
                 self.weight_shapes,
             )
-            ind.fitness = self.simulation.run_experiment(ind_weights=weights, mode="simple")
+            ind.fitness = self.simulation.run_experiment(ind_weights=weights, mode=settings.MODE)
 
         return population
 

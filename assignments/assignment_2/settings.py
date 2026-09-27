@@ -40,6 +40,7 @@ class ExperimentConfig(BaseSettings):
     MODE: ViewerTypes = "launcher"  # see run_experiment() for the options
 
     HIDDEN_SIZE: int = 6
+    FITNESS_TYPE: Literal["baseline"] = "baseline"
 
     # population and run settings
 

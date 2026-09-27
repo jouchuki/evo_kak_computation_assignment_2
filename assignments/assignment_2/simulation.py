@@ -31,6 +31,7 @@ from mujoco import viewer
 
 # moduels
 from utils import make_random_weights
+from factories import FitnessFactory
 
 WORLD_TYPES = {
     "SimpleFlatWorld": SimpleFlatWorld,
@@ -73,6 +74,7 @@ class RobotSimulation:
         rng: np.random.Generator | None = None,
     ) -> None:
         self.settings = settings
+        self._fitness = FitnessFactory(settings.FITNESS_TYPE)
         self.output_folder = output_folder if output_folder is not None else settings.DATA
         self.rng = rng if rng is not None else np.random.default_rng()
 
@@ -154,22 +156,12 @@ class RobotSimulation:
         initial_position: npt.NDArray[np.float64],
         final_position: npt.NDArray[np.float64],
     ) -> float:
-        """Score one evaluation. LOWER IS BETTER.
-
-        The plain version: how far is the robot from the target when time runs out?
-
-        `initial_position` is unused here on purpose - it is passed in because the
-        moment you want a less naive fitness you will need it. Some things worth
-        thinking about (and, ideally, comparing in your report):
-        * Distance *reduced* rather than distance remaining, so a robot that
-            starts closer is not rewarded for standing still.
-        * Penalising a robot that falls over or leaves the arena.
-        * Whether the z-axis should count at all - a robot that jumps is not
-            closer to the target in any way you care about.
-        See `ariel.simulation.tasks.targeted_locomotion` for some worked variants.
-        """
-        target = np.asarray(self.TARGET_POSITION)
-        return float(np.linalg.norm(final_position[:2] - target[:2]))
+        """Score one evaluation using the configured fitness. Lower is better."""
+        return self._fitness(
+            initial_position,
+            final_position,
+            np.asarray(self.TARGET_POSITION, dtype=np.float64),
+        )
 
     def run_experiment(self, ind_weights: list[npt.NDArray[np.float64]] | None = None, mode: ViewerTypes | None = None) -> float:
         """Set up the world, run one simulation, and return the fitness.
