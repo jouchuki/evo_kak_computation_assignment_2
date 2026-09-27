@@ -4,6 +4,8 @@ from typing import Literal
 import numpy as np
 import numpy.typing as npt
 
+from ariel.ec import Individual, Population
+
 
 type ViewerTypes = Literal["launcher", "video", "simple", "frame", "no_control"]
 type AllowedWorldTypes = Literal["SimpleFlatWorld","RuggedTerrainWorld", "CraterTerrainWorld", "AmphitheatreTerrainWorld", "OlympicArena"]
@@ -24,6 +26,8 @@ type AllowedRobotTypes = Literal[
     ]
 
 type FitnessType = Literal["baseline"]
+type ParentSelectionType = Literal["tournament", "uniform"]
+type SurvivorSelectionType = Literal["round_robin_tournament", "mu_plus_lambda"]
 type MutateType = Literal["gaussian", "uniform_reset", "none"]
 type CrossoverType = Literal["none", "one_point", "n_point", "uniform"]
 
@@ -44,3 +48,11 @@ type CrossoverBuilder = Callable[[int, float], CrossoverFunction]
 # A flat genotype produces an independent mutated genotype.
 type MutateFunction = Callable[[Genotype], Genotype]
 type MutateBuilder = Callable[[float, float, float, float], MutateFunction]
+
+# Parent selection preserves repeated winners in a separate mating pool.
+type MatingPool = list[Individual]
+type ParentSelectionFunction = Callable[[Population], MatingPool]
+type ParentSelectionBuilder = Callable[[int, int, bool, bool], ParentSelectionFunction]
+# Survivors mark deaths in the original population for database persistence.
+type SelectionFunction = Callable[[Population], Population]
+type SurvivorSelectionBuilder = Callable[[int, int, bool], SelectionFunction]

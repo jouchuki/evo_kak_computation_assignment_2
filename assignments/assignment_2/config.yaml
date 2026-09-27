@@ -1,6 +1,6 @@
 # Larger budget for the existing controller and evolutionary operators.
-# Per seed: 64 initial evaluations + 32 offspring x 100 generations = 3,264.
-SEEDS: [42, 321]
+# Per seed: 64 initial evaluations + 32 offspring x 50 generations = 1,664.
+SEEDS: [42]
 ROBOT: turtle
 WORLD: OlympicArena
 SPAWN_POS: [0.0, 0.0, 0.1]
@@ -26,3 +26,13 @@ MUTATION_PROB: 0.2       # Probability per weight.
 MUTATION_STD: 0.5        # Gaussian noise standard deviation.
 MUTATION_LOW: -1.0      # Uniform reset lower bound (inclusive).
 MUTATION_HIGH: 1.0      # Uniform reset upper bound (exclusive).
+
+# tournament; uniform.
+PARENT_SELECTION_TYPE: tournament
+OFFSPRING_SIZE: 32              # lambda children; also the number of mating slots.
+TOURNAMENT_SIZE: 2              # k contestants per independent tournament.
+TOURNAMENT_WITH_REPLACEMENT: false  # Within a tournament; repeat winners are allowed.
+
+# round_robin_tournament or mu_plus_lambda.
+SURVIVOR_SELECTION_TYPE: round_robin_tournament
+ROUND_ROBIN_OPPONENTS: 10        # q distinct others per candidate; only round-robin.

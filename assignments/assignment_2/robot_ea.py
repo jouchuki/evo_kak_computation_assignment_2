@@ -2,7 +2,7 @@
 
 from typing import cast
 
-from assignment_types import Genotype, WeightShapes
+from assignment_types import Genotype, MatingPool, WeightShapes
 
 from rich.console import Console
 from rich.traceback import install
@@ -25,7 +25,9 @@ import numpy as np
 from utils import make_random_weights, flatten_weights, unflatten_weights
 from simulation import RobotSimulation
 from settings import settings
-from factories import CrossoverFactory, MutateFactory
+from factories import (
+    CrossoverFactory, MutateFactory, ParentSelectionFactory, SurvivorSelectionFactory,
+)
 
 install()
 console = Console()
@@ -68,8 +70,29 @@ class RobotEA:
         self.simulation.output_folder = config_output_folder
         self.simulation.rng = self.rng
 
-        # CROSSOVER
+        # Selection and variation policies.
         experiment_settings = self.simulation.settings
+        self.offspring_size = experiment_settings.OFFSPRING_SIZE
+        if self.offspring_size is None:
+            self.offspring_size = max(2, 2 * (target_population_size // 4))
+        self.mating_pool: MatingPool = []
+        self._parent_selection = ParentSelectionFactory(
+            experiment_settings.PARENT_SELECTION_TYPE,
+            num_parents=self.offspring_size,
+            tournament_size=experiment_settings.TOURNAMENT_SIZE,
+            with_replacement=experiment_settings.TOURNAMENT_WITH_REPLACEMENT,
+            is_maximisation=is_maximisation,
+        )
+
+        # SURVIVOR SELECTION
+        self._survivor_selection = SurvivorSelectionFactory(
+            experiment_settings.SURVIVOR_SELECTION_TYPE,
+            target_size=target_population_size,
+            num_opponents=experiment_settings.ROUND_ROBIN_OPPONENTS,
+            is_maximisation=is_maximisation,
+        )
+
+        # CROSSOVER
         self._crossover = CrossoverFactory(
             experiment_settings.CROSSOVER_TYPE,
             n_points=experiment_settings.CROSSOVER_N_POINTS,
@@ -127,29 +150,11 @@ class RobotEA:
         return population
 
     def parent_selection(self, population: Population) -> Population:
-
-        population = population.shuffle()
-
-
-        # clear selected tags
-        for ind in population:
-            ind.tags = {"selected": False}
-
-
-        for idx in range(0, len(population) - 1, 2):
-            ind_a = population[idx]
-            ind_b = population[idx + 1]
-            if ind_a.fitness_ is not None and ind_b.fitness_ is not None:
-                if ind_a.fitness_ <= ind_b.fitness_:
-                    ind_a.tags = {"selected": True}
-                    ind_b.tags = {"selected": False}
-                else:
-                    ind_a.tags = {"selected": False}
-                    ind_b.tags = {"selected": True}
+        self.mating_pool = self._parent_selection(population)
         return population
 
     def crossover(self, population: Population) -> Population:
-        parents = population.where(lambda ind: bool(ind.tags.get("selected", False)))
+        parents = self.mating_pool
         for idx in range(0, len(parents) - 1, 2):
             p_a = parents[idx]
             p_b = parents[idx + 1]
@@ -169,6 +174,7 @@ class RobotEA:
 
             # we add children here, then remove at survivor selection stage
             population.extend([child_a, child_b])
+        self.mating_pool = []
         return population
 
     def mutate(self, population: Population) -> Population:
@@ -179,19 +185,7 @@ class RobotEA:
         return population
 
     def survivor_selection(self, population: Population) -> Population:
-        shuffled = population.alive.shuffle()
-        alive_count = len(shuffled)
-        for idx in range(0, len(shuffled) - 1, 2):
-            if alive_count <= config.target_population_size:
-                break
-            ind_a = shuffled[idx]
-            ind_b = shuffled[idx + 1]
-            if (ind_a.fitness_ or 0.0) <= (ind_b.fitness_ or 0.0):
-                ind_b.alive = False
-            else:
-                ind_a.alive = False
-            alive_count -= 1
-        return population
+        return self._survivor_selection(population)
 
     def run(self) -> Population:
         # survivor_selection culls down to this; keep it in line with the seed size.

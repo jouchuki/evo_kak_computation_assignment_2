@@ -3,7 +3,7 @@ from pydantic import Field
 # import numpy as np
 from pathlib import Path
 import yaml
-from assignment_types import AllowedRobotTypes, AllowedWorldTypes, CrossoverType, FitnessType, MutateType, ViewerTypes
+from assignment_types import AllowedRobotTypes, AllowedWorldTypes, CrossoverType, FitnessType, MutateType, ParentSelectionType, SurvivorSelectionType, ViewerTypes
 
 class ExperimentConfig(BaseSettings):
 
@@ -29,6 +29,16 @@ class ExperimentConfig(BaseSettings):
     NUM_STEPS: int = 200
     RUN_NAME: str = ""
 
+
+    # selection settings
+    PARENT_SELECTION_TYPE: ParentSelectionType = "tournament"
+    SURVIVOR_SELECTION_TYPE: SurvivorSelectionType = "round_robin_tournament"
+    # Two selected parents produce two children, so lambda must be even.
+    # None preserves the previous approximately half-population offspring budget.
+    OFFSPRING_SIZE: int | None = Field(default=None, ge=2, multiple_of=2)
+    TOURNAMENT_SIZE: int = Field(default=2, ge=1)
+    TOURNAMENT_WITH_REPLACEMENT: bool = False
+    ROUND_ROBIN_OPPONENTS: int = Field(default=10, ge=1)
 
     # crossover settings
     CROSSOVER_TYPE: CrossoverType = "one_point"
