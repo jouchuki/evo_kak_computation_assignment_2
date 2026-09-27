@@ -2,6 +2,8 @@
 
 from typing import cast
 
+from assignment_types import Genotype, WeightShapes
+
 from rich.console import Console
 from rich.traceback import install
 
@@ -73,7 +75,7 @@ class RobotEA:
 
         self.INPUT, self.OUTPUT= self.simulation.INPUT_SIZE, self.simulation.OUTPUT_SIZE
         
-        self.weight_shapes = [
+        self.weight_shapes: WeightShapes = [
             (self.INPUT, self.simulation.HIDDEN_SIZE),
             (self.simulation.HIDDEN_SIZE, self.OUTPUT)
         ]
@@ -101,7 +103,7 @@ class RobotEA:
 
         for ind in population.unevaluated:
             weights = unflatten_weights(
-                cast(list[float], ind.genotype),
+                cast(Genotype, ind.genotype),
                 self.weight_shapes,
             )
             ind.fitness = self.simulation.run_experiment(ind_weights=weights, mode=settings.MODE)
@@ -136,8 +138,8 @@ class RobotEA:
             p_a = parents[idx]
             p_b = parents[idx + 1]
             g_a, g_b = Crossover.one_point(
-                cast("list[float]", p_a.genotype),
-                cast("list[float]", p_b.genotype),
+                cast(Genotype, p_a.genotype),
+                cast(Genotype, p_b.genotype),
             )
 
             # one_point returns float genotypes; keep this encoding integer.
@@ -155,7 +157,7 @@ class RobotEA:
     def mutate(self, population: Population) -> Population:
         for ind in population.where(lambda ind: bool(ind.tags.get("mutate", False))):
             ind.genotype = FloatMutator.gaussian(
-                individual=cast("list[float]", ind.genotype),
+                individual=cast(Genotype, ind.genotype),
                 std=settings.MUTATION_PROB,
                 mutation_probability=settings.MUTATION_STD,
             )
@@ -192,7 +194,7 @@ class RobotEA:
         # record the best guy
         best = self.ea.get_solution("best", only_alive=False)
         weights = unflatten_weights(
-            cast(list[float], best.genotype),
+            cast(Genotype, best.genotype),
             self.weight_shapes,
         )
         self.simulation.run_experiment(ind_weights=weights, mode="video")

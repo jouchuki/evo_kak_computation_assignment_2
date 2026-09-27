@@ -1,14 +1,11 @@
 """Build fitness functions by name. All scores are minimized."""
 
-from collections.abc import Callable
 from typing import ClassVar
 
 import numpy as np
-import numpy.typing as npt
 
 
-type Position = npt.NDArray[np.float64]
-type FitnessFunction = Callable[[Position, Position, Position], float]
+from assignment_types import FitnessBuilder, FitnessFunction, Position
 
 
 class FitnessFactory:
@@ -27,12 +24,12 @@ class FitnessFactory:
 
         return evaluate
 
-    BUILDERS: ClassVar[dict[str, Callable[[], FitnessFunction]]] = {
+    BUILDERS: ClassVar[dict[str, FitnessBuilder]] = {
         "baseline": baseline,
     }
 
     @staticmethod
-    def __new__(cls: object, name: str) -> FitnessFunction:
+    def __new__(cls: type["FitnessFactory"], name: str) -> FitnessFunction:
         
         try:
             builder = cls.BUILDERS[name]

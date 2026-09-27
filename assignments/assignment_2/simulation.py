@@ -1,6 +1,7 @@
 from pathlib import Path
 
-from settings import settings, ExperimentConfig, ViewerTypes
+from settings import settings, ExperimentConfig
+from assignment_types import Coordinates, FloatArray, Position, ViewerTypes, Weights
 from ariel.simulation.environments import BaseWorld, SimpleFlatWorld, RuggedTerrainWorld, AmphitheatreTerrainWorld, OlympicArena, CraterTerrainWorld
 from ariel.body_phenotypes.robogen_lite.prebuilt_robots.john_set import (
     baby_a,
@@ -26,7 +27,6 @@ from ariel import console
 # Third-party libraries
 import mujoco as mj
 import numpy as np
-import numpy.typing as npt
 from mujoco import viewer
 
 # moduels
@@ -57,7 +57,7 @@ ROBOT_TYPES = {
     "centipede_5": centipede_5,
 }
 
-TARGET_POSITIONS: dict[str, tuple[float, float, float]] = {
+TARGET_POSITIONS: dict[str, Coordinates] = {
     "SimpleFlatWorld": (2.0, 0.0, 0.1),
     "RuggedTerrainWorld": (2.0, 0.0, 0.1),
     "CraterTerrainWorld": (2.0, 0.0, 0.1),
@@ -83,7 +83,7 @@ class RobotSimulation:
 
         # --- EXPERIMENT CONSTANTS --- #
         self.SPAWN_POS: list[float] = settings.SPAWN_POS  # where the robot starts
-        self.TARGET_POSITION: tuple[float, float, float] = TARGET_POSITIONS[self.settings.WORLD]  # where it should end up
+        self.TARGET_POSITION: Coordinates = TARGET_POSITIONS[self.settings.WORLD]  # where it should end up
         self.SIM_DURATION: float = settings.SIM_DURATION  # seconds of simulated time per evaluation
         self.MODE: ViewerTypes = settings.MODE  # see run_experiment() for the options
 
@@ -115,8 +115,8 @@ class RobotSimulation:
         self,
         model: mj.MjModel,
         data: mj.MjData,
-        weights: list[npt.NDArray[np.float64]],
-    ) -> npt.NDArray[np.float64]:
+        weights: Weights,
+    ) -> FloatArray:
         """Map robot state to hinge commands: in -> hidden -> actions.
         Parameters
         ----------
@@ -129,7 +129,7 @@ class RobotSimulation:
 
         Returns
         -------
-        npt.NDArray[np.float64]
+        FloatArray
             `model.nu` action values, already scaled to [-pi/2, pi/2].
         """
         w1, w2 = weights
@@ -146,15 +146,15 @@ class RobotSimulation:
         return outputs * (np.pi / 2)  # in [-pi/2, pi/2]
 
 
-    def get_core_position(self, data: mj.MjData) -> npt.NDArray[np.float64]:
+    def get_core_position(self, data: mj.MjData) -> Position:
         """Return the robot core's current (x, y, z) world position."""
         return np.asarray(data.qpos[0:3]).copy()
 
 
     def fitness_function(
         self,
-        initial_position: npt.NDArray[np.float64],
-        final_position: npt.NDArray[np.float64],
+        initial_position: Position,
+        final_position: Position,
     ) -> float:
         """Score one evaluation using the configured fitness. Lower is better."""
         return self._fitness(
@@ -163,7 +163,7 @@ class RobotSimulation:
             np.asarray(self.TARGET_POSITION, dtype=np.float64),
         )
 
-    def run_experiment(self, ind_weights: list[npt.NDArray[np.float64]] | None = None, mode: ViewerTypes | None = None) -> float:
+    def run_experiment(self, ind_weights: Weights | None = None, mode: ViewerTypes | None = None) -> float:
         """Set up the world, run one simulation, and return the fitness.
 
         This is the function your EA calls once per individual, with `mode` set

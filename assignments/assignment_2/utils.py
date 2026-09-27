@@ -1,4 +1,4 @@
-import numpy.typing as npt
+from assignment_types import Genotype, Weights, WeightShapes
 import numpy as np
 from settings import settings
 
@@ -11,7 +11,7 @@ def make_random_weights(
     rng: np.random.Generator,
     *,
     hidden_size: int = settings.HIDDEN_SIZE,
-) -> list[npt.NDArray[np.float64]]:
+) -> Weights:
     """Draw a random parameter set for `nn_controller`.
 
     THIS IS THE FUNCTION YOUR EA REPLACES. Instead of sampling weights from a
@@ -27,11 +27,11 @@ def make_random_weights(
     ]
 
 
-def flatten_weights(weights: list[npt.NDArray[np.float64]]) -> list[float]:
+def flatten_weights(weights: Weights) -> Genotype:
     return np.concatenate([w.ravel() for w in weights]).tolist()
 
 # ... to describe any number of integers
-def unflatten_weights(genes: list[float], shapes: list[tuple[int, ...]]) -> list[npt.NDArray[np.float64]]:
+def unflatten_weights(genes: Genotype, shapes: WeightShapes) -> Weights:
     flat = np.asarray(genes, dtype=np.float64)
     sizes = [int(np.prod(shape)) for shape in shapes]
 

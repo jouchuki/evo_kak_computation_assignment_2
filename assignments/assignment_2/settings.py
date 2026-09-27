@@ -2,27 +2,7 @@ from pydantic_settings import BaseSettings
 # import numpy as np
 from pathlib import Path
 import yaml
-from typing import Literal
-
-type ViewerTypes = Literal["launcher", "video", "simple", "frame", "no_control"]
-type AllowedWorldTypes = Literal["SimpleFlatWorld","RuggedTerrainWorld", "CraterTerrainWorld", "AmphitheatreTerrainWorld", "OlympicArena"]
-type AllowedRobotTypes = Literal[
-    "baby_a",
-    "baby_b",
-    "gecko",
-    "linkin_modified",
-    "snake",
-    "turtle",
-    "iguana",
-    "spider_8",
-    "spider_12",
-    "spider_16",
-    "centipede_3",
-    "centipede_4",
-    "centipede_5",
-    ]
-
-
+from assignment_types import AllowedRobotTypes, AllowedWorldTypes, FitnessType, ViewerTypes
 
 class ExperimentConfig(BaseSettings):
 
@@ -40,7 +20,7 @@ class ExperimentConfig(BaseSettings):
     MODE: ViewerTypes = "launcher"  # see run_experiment() for the options
 
     HIDDEN_SIZE: int = 6
-    FITNESS_TYPE: Literal["baseline"] = "baseline"
+    FITNESS_TYPE: FitnessType = "baseline"
 
     # population and run settings
 
