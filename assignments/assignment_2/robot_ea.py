@@ -24,6 +24,7 @@ import numpy as np
 
 from utils import make_random_weights, flatten_weights, unflatten_weights
 from simulation import RobotSimulation
+from settings import settings
 
 install()
 console = Console()
@@ -155,8 +156,8 @@ class RobotEA:
         for ind in population.where(lambda ind: bool(ind.tags.get("mutate", False))):
             ind.genotype = FloatMutator.gaussian(
                 individual=cast("list[float]", ind.genotype),
-                std=0.5,
-                mutation_probability=0.2,
+                std=settings.MUTATION_PROB,
+                mutation_probability=settings.MUTATION_STD,
             )
             ind.requires_eval = True
             ind.tags = {"mutate": False}

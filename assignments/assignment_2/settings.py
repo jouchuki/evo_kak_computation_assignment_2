@@ -41,10 +41,16 @@ class ExperimentConfig(BaseSettings):
 
     HIDDEN_SIZE: int = 6
 
+    # population and run settings
+
     TARGET_POPULATION_SIZE: int = 10
     NUM_STEPS: int = 200
     RUN_NAME: str = ""
 
+
+    # mutation settings
+    MUTATION_PROB: float = 0.2
+    MUTATION_STD: float = 0.5
 
     @property
     def SCRIPT_NAME(self) -> str:
