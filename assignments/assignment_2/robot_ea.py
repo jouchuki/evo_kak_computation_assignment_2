@@ -9,7 +9,6 @@ from rich.traceback import install
 
 from ariel.ec import (
     EA,
-    Crossover,
     EAOperation,
     Individual,
     FloatMutator,
@@ -27,6 +26,7 @@ import numpy as np
 from utils import make_random_weights, flatten_weights, unflatten_weights
 from simulation import RobotSimulation
 from settings import settings
+from factories import CrossoverFactory
 
 install()
 console = Console()
@@ -68,6 +68,13 @@ class RobotEA:
         self.simulation = simulation if simulation is not None else RobotSimulation()
         self.simulation.output_folder = config_output_folder
         self.simulation.rng = self.rng
+
+        experiment_settings = self.simulation.settings
+        self._crossover = CrossoverFactory(
+            experiment_settings.CROSSOVER_TYPE,
+            n_points=experiment_settings.CROSSOVER_N_POINTS,
+            swap_probability=experiment_settings.CROSSOVER_SWAP_PROB,
+        )
 
         # TODO: move all the model and world building logic here basically so that i can have access
         # to input/hidden/output easily from the class itself
@@ -137,12 +144,12 @@ class RobotEA:
         for idx in range(0, len(parents) - 1, 2):
             p_a = parents[idx]
             p_b = parents[idx + 1]
-            g_a, g_b = Crossover.one_point(
+            g_a, g_b = self._crossover(
                 cast(Genotype, p_a.genotype),
                 cast(Genotype, p_b.genotype),
             )
 
-            # one_point returns float genotypes; keep this encoding integer.
+            # Each child stores a flat, JSON-compatible list of float weights.
             child_a = Individual()
             child_a.genotype = [float(gene) for gene in g_a]
             child_a.tags = {"mutate": True}
@@ -158,8 +165,8 @@ class RobotEA:
         for ind in population.where(lambda ind: bool(ind.tags.get("mutate", False))):
             ind.genotype = FloatMutator.gaussian(
                 individual=cast(Genotype, ind.genotype),
-                std=settings.MUTATION_PROB,
-                mutation_probability=settings.MUTATION_STD,
+                std=settings.MUTATION_STD,
+                mutation_probability=settings.MUTATION_PROB,
             )
             ind.requires_eval = True
             ind.tags = {"mutate": False}

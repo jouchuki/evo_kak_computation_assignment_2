@@ -14,3 +14,8 @@ NUM_STEPS: 50
 RUN_NAME: large_pop64_gen100
 
 FITNESS_TYPE: baseline
+
+# Available: "none" (copy parents, then mutate), one_point, n_point, uniform.
+CROSSOVER_TYPE: one_point
+CROSSOVER_N_POINTS: 2      # Used only by n_point.
+CROSSOVER_SWAP_PROB: 0.5  # Per-gene swap probability; used only by uniform.

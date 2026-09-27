@@ -1,8 +1,9 @@
 from pydantic_settings import BaseSettings
+from pydantic import Field
 # import numpy as np
 from pathlib import Path
 import yaml
-from assignment_types import AllowedRobotTypes, AllowedWorldTypes, FitnessType, ViewerTypes
+from assignment_types import AllowedRobotTypes, AllowedWorldTypes, CrossoverType, FitnessType, ViewerTypes
 
 class ExperimentConfig(BaseSettings):
 
@@ -28,6 +29,11 @@ class ExperimentConfig(BaseSettings):
     NUM_STEPS: int = 200
     RUN_NAME: str = ""
 
+
+    # crossover settings
+    CROSSOVER_TYPE: CrossoverType = "one_point"
+    CROSSOVER_N_POINTS: int = Field(default=2, ge=1)
+    CROSSOVER_SWAP_PROB: float = Field(default=0.5, ge=0.0, le=1.0)
 
     # mutation settings
     MUTATION_PROB: float = 0.2

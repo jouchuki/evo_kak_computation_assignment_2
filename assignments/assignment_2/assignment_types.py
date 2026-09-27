@@ -24,6 +24,7 @@ type AllowedRobotTypes = Literal[
     ]
 
 type FitnessType = Literal["baseline"]
+type CrossoverType = Literal["none", "one_point", "n_point", "uniform"]
 
 type FloatArray = npt.NDArray[np.float64]
 type Position = FloatArray
@@ -34,3 +35,7 @@ type Genotype = list[float]
 
 type FitnessFunction = Callable[[Position, Position, Position], float]
 type FitnessBuilder = Callable[[], FitnessFunction]
+
+# Two flat parents produce two independent flat children.
+type CrossoverFunction = Callable[[Genotype, Genotype], tuple[Genotype, Genotype]]
+type CrossoverBuilder = Callable[[int, float], CrossoverFunction]
