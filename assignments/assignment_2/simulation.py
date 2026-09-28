@@ -75,10 +75,12 @@ class RobotSimulation:
         self.settings = settings
         self._fitness = FitnessFactory(
             settings.FITNESS_TYPE, fall_penalty=settings.FALL_PENALTY,
+            speed_penalty=settings.SPEED_PENALTY,
         )
         self.output_folder = output_folder if output_folder is not None else settings.DATA
         self.rng = rng if rng is not None else np.random.default_rng()
         self.total_path_length = 0.0
+        self.mean_target_distance = 0.0
 
         self.world: BaseWorld = WORLD_TYPES[self.settings.WORLD]()
         self.robot: CoreModule = ROBOT_TYPES[self.settings.ROBOT]()
@@ -214,6 +216,7 @@ class RobotSimulation:
             np.asarray(self.TARGET_POSITION, dtype=np.float64),
             self.if_onplatform(final_position) if self.settings.FITNESS_TYPE == "improved" else True,
             total_path_length,
+            self.mean_target_distance,
         )
 
     # nothingburger engineering
@@ -309,17 +312,26 @@ class RobotSimulation:
         initial_position = self.get_core_position(self.data)
         previous_xy = initial_position[:2].copy()
         previous_time = float(self.data.time)
+        initial_time = previous_time
+        target_xy = np.asarray(self.TARGET_POSITION[:2])
+        previous_distance = float(np.linalg.norm(previous_xy - target_xy))
+        distance_integral = 0.0
+        self.mean_target_distance = previous_distance
         self.total_path_length = 0.0
 
         def record_path(d: mj.MjData) -> None:
-            nonlocal previous_xy, previous_time
+            nonlocal previous_xy, previous_time, previous_distance, distance_integral
             # Rendering/forward calls can invoke the callback again at the same time.
             if d.time <= previous_time:
                 return
             current_xy = d.qpos[:2].copy()
             self.total_path_length += float(np.linalg.norm(current_xy - previous_xy))
+            current_distance = float(np.linalg.norm(current_xy - target_xy))
+            distance_integral += 0.5 * (previous_distance + current_distance) * (d.time - previous_time)
+            previous_distance = current_distance
             previous_xy = current_xy
             previous_time = float(d.time)
+            self.mean_target_distance = distance_integral / (previous_time - initial_time)
 
         def control_callback(m: mj.MjModel, d: mj.MjData) -> None:
             """Compute and apply actions; MuJoCo calls this every physics step."""
@@ -379,6 +391,7 @@ class RobotSimulation:
         console.log(f"end    : {np.round(final_position, 3)}")
         console.log(f"target : {np.round(self.TARGET_POSITION, 3)}")
         console.log(f"path XY: {self.total_path_length:.4f}")
+        console.log(f"mean target distance: {self.mean_target_distance:.4f}")
         console.log(f"fitness: {fitness:.4f}   (lower is better)")
 
         return fitness

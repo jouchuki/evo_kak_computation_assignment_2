@@ -1,23 +1,26 @@
-# Larger budget for the existing controller and evolutionary operators.
-# Per seed: 64 initial evaluations + 32 offspring x 50 generations = 1,664.
+# OlympicArena rhythm experiment.
+# Per seed: 128 initial evaluations + 64 offspring x 400 generations = 25,728.
 SEEDS: [42]
 ROBOT: iguana
-WORLD: SimpleFlatWorld
+WORLD: OlympicArena
 SPAWN_POS: [0.0, 0.0, 0.1]
-SIM_DURATION: 30.0
+SIM_DURATION: 90.0
 MODE: simple
 HIDDEN_SIZE: 20
 RHYTHM_FREQUENCY: 1.0  # Hz: one full sine/cosine cycle per simulated second.
 
-TARGET_POPULATION_SIZE: 64
-NUM_STEPS: 200
+TARGET_POPULATION_SIZE: 128
+NUM_STEPS: 400
 # Separate from the previous run. Change this name for another saved run.
-RUN_NAME: testdrive_rhythm
+RUN_NAME: olympic_rhythm_speed_pop128_gen400
 
 # baseline: remaining XY distance.
 # improved: ARIEL direct-path score (distance change + 0.5 * excess path) + fall penalty.
 FITNESS_TYPE: improved
 FALL_PENALTY: 10.0
+# Adds weight * (mean XY distance to target / initial XY distance).
+# Standing still adds 1; earlier progress reduces it. Set 0 to disable.
+SPEED_PENALTY: 1.0
 
 # Available: "none" (copy parents, then mutate), one_point, n_point, uniform.
 CROSSOVER_TYPE: one_point
@@ -33,7 +36,7 @@ MUTATION_HIGH: 1.0      # Uniform reset upper bound (exclusive).
 
 # tournament; uniform.
 PARENT_SELECTION_TYPE: tournament
-OFFSPRING_SIZE: 32              # lambda children; also the number of mating slots.
+OFFSPRING_SIZE: 64              # lambda children; also the number of mating slots.
 TOURNAMENT_SIZE: 2              # k contestants per independent tournament.
 TOURNAMENT_WITH_REPLACEMENT: false  # Within a tournament; repeat winners are allowed.
 
