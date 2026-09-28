@@ -30,7 +30,6 @@ import numpy as np
 from mujoco import viewer
 
 # moduels
-from utils import make_random_weights
 from factories import FitnessFactory
 
 WORLD_TYPES = {
@@ -74,7 +73,9 @@ class RobotSimulation:
         rng: np.random.Generator | None = None,
     ) -> None:
         self.settings = settings
-        self._fitness = FitnessFactory(settings.FITNESS_TYPE)
+        self._fitness = FitnessFactory(
+            settings.FITNESS_TYPE, fall_penalty=settings.FALL_PENALTY,
+        )
         self.output_folder = output_folder if output_folder is not None else settings.DATA
         self.rng = rng if rng is not None else np.random.default_rng()
 
@@ -110,6 +111,51 @@ class RobotSimulation:
         # now. we will see
         self.INPUT_SIZE = len(self.data.qpos) + len(self.data.qvel)
         self.OUTPUT_SIZE = self.model.nu
+
+        # check geoms for understanding how to interact with the arena
+        # collect arena boundaries to understand the runs where the robot is falling from the arena
+        
+        # MuJoCo's control callback is a GLOBAL. Clear it. DO NOT REMOVE.
+        # without these 2 lines all boundaries read will be 0 0 0 
+        mj.set_mjcb_control(None)
+        mj.mj_forward(self.model, self.data)
+
+        self.boundaries = {}
+        for i in range(self.model.ngeom):
+            # check only the geoms of the arena itself not the robot
+            if not self.model.geom(i).name.split("_")[0].startswith("robot"):
+
+                # get the geom and the state from mjdata
+                geom = self.model.geom(i)
+                state = self.data.geom(i)
+                print("geom", geom)
+                print("state", state)
+                # understand its rotation to be able to map into world coordingates
+                rotation = state.xmat.reshape(3, 3)
+                print("rotation", rotation)
+
+                # understand the local center and halfsize to understand the span of the bb along the axis
+                local_center, half_size = self.model.geom_aabb[i].reshape(2, 3)
+                print("local_center", local_center, "half_size", half_size)
+
+                # understand actual world coordinate center applying rotation and local center
+                center = state.xpos + rotation @ local_center
+                # translate to world halfsize an duse absolute values to not cancel out the distances
+                world_half_size = np.abs(rotation) @ half_size
+                print("center",center)
+                print("world_half_size",world_half_size)
+
+                # calculate the coords using worlds half size
+                minxyz = center - world_half_size
+                maxxyz = center + world_half_size
+
+                print(
+                    geom.name,
+                    "min XYZ:", minxyz, 
+                    "max XYZ:", maxxyz,
+                )
+
+                self.boundaries[geom.name] = (minxyz, maxxyz)
 
     def nn_controller(
         self,
@@ -161,7 +207,71 @@ class RobotSimulation:
             initial_position,
             final_position,
             np.asarray(self.TARGET_POSITION, dtype=np.float64),
+            self.if_onplatform(final_position) if self.settings.FITNESS_TYPE == "improved" else True,
         )
+
+    # nothingburger engineering
+    # def which_onplatform(self, robot_pos: Position) -> str:
+    #     for pl in self.boundaries.keys():
+    #         mn, mx = self.boundaries[pl]
+    #         if np.all(mn[:2] < robot_pos[:2]) and np.all(mx[:2]> robot_pos[:2]):
+    #             return pl
+    #     # return "" if the robot is not within any platform
+    #     return ""
+
+    def if_onplatform(self, robot_pos: Position) -> bool:
+        for pl in self.boundaries.keys():
+            # check boundaries
+            mn, mx = self.boundaries[pl]
+            # only compare X and Y here because for Z the rules of determinng if robot is on the platform are differnet
+            if np.all(mn[:2] < robot_pos[:2]) and np.all(mx[:2]> robot_pos[:2]):
+                # get rotation because we need to see if platform is tiltedd
+                rot = self.get_geom_rotation(pl)
+                # no rotation will equal identity matrix
+                # but it doesnt always mean that if platform is not rotated,
+                # its xmat values will be exactly np.eye(3)
+                # imagine this:
+                # [[ 0.707, -0.707, 0 ]
+                # [ 0.707, 0.707, 0 ]
+                # [ 0, 0, 1 ]]
+                # the platform is only rotated around Z which is still flat
+                # additionally
+                # the actual rotation of the non tilted platforms is 
+                # [[ 0, 0, 1 ]
+                # [ 0, -1, 0]
+                # [1, 0, 0]]
+                # which means that its local X and Z are swapped and Y is -Y
+                # compared to world coordinates
+                # so we only care about local Z and Y rotation
+                # only the world Z rotation would not change the relationship between world Z and local X
+                # which is the rot [2, 0]
+                # and we only care about it being flatso 
+                # so what we do is simple
+                # upd: i realized im stupid this was not needed. i didnt need it at all bro
+                is_flat = np.isclose(abs(rot[2, 0]), 1.0)
+                # we check if the platforms 
+                if is_flat:
+                    if mx[2] <= robot_pos[2]:
+                        return True
+                else:
+                    if mn[2] < robot_pos[2]:
+
+                        return True
+
+        return False
+
+    def get_geom_rotation(self, name: str) -> np.ndarray: # TODO: i need a type denoting rotation asap
+
+        mj.mj_forward(self.model, self.data)
+
+        try:
+            for i in range(self.model.ngeom):
+                if name == self.model.geom(i).name:
+                    # reshape so its a 3x3 matrix
+                    return self.data.geom(i).xmat.reshape(3, 3).copy()
+        except Exception as e:
+            raise KeyError(e, "no geom with this name found")
+        
 
     def run_experiment(self, ind_weights: Weights | None = None, mode: ViewerTypes | None = None) -> float:
         """Set up the world, run one simulation, and return the fitness.
@@ -183,23 +293,12 @@ class RobotSimulation:
         # MuJoCo's control callback is a GLOBAL. Clear it. DO NOT REMOVE.
         mj.set_mjcb_control(None)
 
-        
-
         # Put the simulation in a clean, known state before reading anything.
         mj.mj_resetData(self.model, self.data)
         mj.mj_forward(self.model, self.data)
 
-        
-
         # run_experiment() will run a single experiment with 1 individual's weights or fall back to random weights
-        if ind_weights is not None:
-            weights = ind_weights
-        else:
-            weights = make_random_weights(
-                self.INPUT_SIZE, self.OUTPUT_SIZE, self.rng,
-                hidden_size=self.HIDDEN_SIZE,
-            )
-
+        weights = ind_weights
 
         def control_callback(m: mj.MjModel, d: mj.MjData) -> None:
             """Compute and apply actions; MuJoCo calls this every physics step."""

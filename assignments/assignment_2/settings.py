@@ -22,6 +22,7 @@ class ExperimentConfig(BaseSettings):
 
     HIDDEN_SIZE: int = 6
     FITNESS_TYPE: FitnessType = "baseline"
+    FALL_PENALTY: float = Field(default=10.0, ge=0.0, allow_inf_nan=False)
 
     # population and run settings
 
@@ -33,6 +34,7 @@ class ExperimentConfig(BaseSettings):
     # selection settings
     PARENT_SELECTION_TYPE: ParentSelectionType = "tournament"
     SURVIVOR_SELECTION_TYPE: SurvivorSelectionType = "round_robin_tournament"
+
     # Two selected parents produce two children, so lambda must be even.
     # None preserves the previous approximately half-population offspring budget.
     OFFSPRING_SIZE: int | None = Field(default=None, ge=2, multiple_of=2)

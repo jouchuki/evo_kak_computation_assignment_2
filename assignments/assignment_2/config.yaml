@@ -4,16 +4,18 @@ SEEDS: [42]
 ROBOT: turtle
 WORLD: OlympicArena
 SPAWN_POS: [0.0, 0.0, 0.1]
-SIM_DURATION: 60.0
+SIM_DURATION: 15.0
 MODE: simple
 HIDDEN_SIZE: 20
 
 TARGET_POPULATION_SIZE: 64
 NUM_STEPS: 50
 # Separate from the previous run. Change this name for another saved run.
-RUN_NAME: large_pop64_gen100
+RUN_NAME: testdrive
 
-FITNESS_TYPE: baseline
+# baseline: XY distance; improved: XY distance + final-state fall penalty.
+FITNESS_TYPE: improved
+FALL_PENALTY: 10.0
 
 # Available: "none" (copy parents, then mutate), one_point, n_point, uniform.
 CROSSOVER_TYPE: one_point

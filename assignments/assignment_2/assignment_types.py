@@ -25,7 +25,7 @@ type AllowedRobotTypes = Literal[
     "centipede_5",
     ]
 
-type FitnessType = Literal["baseline"]
+type FitnessType = Literal["baseline", "improved"]
 type ParentSelectionType = Literal["tournament", "uniform"]
 type SurvivorSelectionType = Literal["round_robin_tournament", "mu_plus_lambda"]
 type MutateType = Literal["gaussian", "uniform_reset", "none"]
@@ -38,8 +38,8 @@ type Weights = list[FloatArray]
 type WeightShapes = list[tuple[int, ...]]
 type Genotype = list[float]
 
-type FitnessFunction = Callable[[Position, Position, Position], float]
-type FitnessBuilder = Callable[[], FitnessFunction]
+type FitnessFunction = Callable[[Position, Position, Position, bool], float]
+type FitnessBuilder = Callable[[float], FitnessFunction]
 
 # Two flat parents produce two independent flat children.
 type CrossoverFunction = Callable[[Genotype, Genotype], tuple[Genotype, Genotype]]
