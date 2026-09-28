@@ -21,6 +21,7 @@ class ExperimentConfig(BaseSettings):
     MODE: ViewerTypes = "launcher"  # see run_experiment() for the options
 
     HIDDEN_SIZE: int = 6
+    RHYTHM_FREQUENCY: float = Field(default=1.0, gt=0.0, allow_inf_nan=False)  # Hz
     FITNESS_TYPE: FitnessType = "baseline"
     FALL_PENALTY: float = Field(default=10.0, ge=0.0, allow_inf_nan=False)
 

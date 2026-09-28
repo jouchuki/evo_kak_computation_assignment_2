@@ -110,7 +110,8 @@ class RobotSimulation:
         # output == amount of hinges of a robot, input == all input channels, i will change them
         # actually i might be wrong about input
         # now. we will see
-        self.INPUT_SIZE = len(self.data.qpos) + len(self.data.qvel)
+        # Two extra channels give the controller a repeating sine/cosine clock.
+        self.INPUT_SIZE = len(self.data.qpos) + len(self.data.qvel) + 2
         self.OUTPUT_SIZE = self.model.nu
 
         # check geoms for understanding how to interact with the arena
@@ -182,8 +183,10 @@ class RobotSimulation:
         w1, w2 = weights
 
         # --- INPUTS ---------------------------------------------------------- #
-        # Bare qpos - the simplest choice, not necessarily a good one.
-        inputs = np.concatenate((data.qpos, data.qvel))
+        # Simulation time resets each evaluation, so the rhythm does too.
+        phase = 2 * np.pi * self.settings.RHYTHM_FREQUENCY * data.time
+        rhythm = np.array([np.sin(phase), np.cos(phase)])
+        inputs = np.concatenate((data.qpos, data.qvel, rhythm))
 
         # --- FORWARD PASS ----------------------------------------------------- #
         layer1 = np.tanh(inputs @ w1)

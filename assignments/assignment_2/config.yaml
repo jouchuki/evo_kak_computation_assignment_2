@@ -1,17 +1,18 @@
 # Larger budget for the existing controller and evolutionary operators.
 # Per seed: 64 initial evaluations + 32 offspring x 50 generations = 1,664.
 SEEDS: [42]
-ROBOT: turtle
-WORLD: OlympicArena
+ROBOT: iguana
+WORLD: SimpleFlatWorld
 SPAWN_POS: [0.0, 0.0, 0.1]
-SIM_DURATION: 15.0
+SIM_DURATION: 30.0
 MODE: simple
 HIDDEN_SIZE: 20
+RHYTHM_FREQUENCY: 1.0  # Hz: one full sine/cosine cycle per simulated second.
 
 TARGET_POPULATION_SIZE: 64
-NUM_STEPS: 50
+NUM_STEPS: 200
 # Separate from the previous run. Change this name for another saved run.
-RUN_NAME: testdrive
+RUN_NAME: testdrive_rhythm
 
 # baseline: remaining XY distance.
 # improved: ARIEL direct-path score (distance change + 0.5 * excess path) + fall penalty.
