@@ -78,6 +78,7 @@ class RobotSimulation:
         )
         self.output_folder = output_folder if output_folder is not None else settings.DATA
         self.rng = rng if rng is not None else np.random.default_rng()
+        self.total_path_length = 0.0
 
         self.world: BaseWorld = WORLD_TYPES[self.settings.WORLD]()
         self.robot: CoreModule = ROBOT_TYPES[self.settings.ROBOT]()
@@ -201,6 +202,7 @@ class RobotSimulation:
         self,
         initial_position: Position,
         final_position: Position,
+        total_path_length: float,
     ) -> float:
         """Score one evaluation using the configured fitness. Lower is better."""
         return self._fitness(
@@ -208,6 +210,7 @@ class RobotSimulation:
             final_position,
             np.asarray(self.TARGET_POSITION, dtype=np.float64),
             self.if_onplatform(final_position) if self.settings.FITNESS_TYPE == "improved" else True,
+            total_path_length,
         )
 
     # nothingburger engineering
@@ -300,8 +303,26 @@ class RobotSimulation:
         # run_experiment() will run a single experiment with 1 individual's weights or fall back to random weights
         weights = ind_weights
 
+        initial_position = self.get_core_position(self.data)
+        previous_xy = initial_position[:2].copy()
+        previous_time = float(self.data.time)
+        self.total_path_length = 0.0
+
+        def record_path(d: mj.MjData) -> None:
+            nonlocal previous_xy, previous_time
+            # Rendering/forward calls can invoke the callback again at the same time.
+            if d.time <= previous_time:
+                return
+            current_xy = d.qpos[:2].copy()
+            self.total_path_length += float(np.linalg.norm(current_xy - previous_xy))
+            previous_xy = current_xy
+            previous_time = float(d.time)
+
         def control_callback(m: mj.MjModel, d: mj.MjData) -> None:
             """Compute and apply actions; MuJoCo calls this every physics step."""
+            record_path(d)
+            if mode == "no_control":
+                return
             actions = self.nn_controller(m, d, weights)
 
             # DIRECT application (see the controller contract above).
@@ -312,48 +333,49 @@ class RobotSimulation:
             # d.ctrl[:] += actions * delta
             # d.ctrl[:] = np.clip(d.ctrl, -np.pi / 2, np.pi / 2)
 
-        # --- Record the starting point ----------------------------------------- #
-        initial_position = self.get_core_position(self.data)
+        # Observe movement in every mode, including manual control.
+        mj.set_mjcb_control(control_callback)
 
-        # --- Run ---------------------------------------------------------------- #
-        if mode != "no_control":
-            mj.set_mjcb_control(control_callback)
-
-        match mode:
-            case "launcher":
-                # Interactive window. Great for seeing what your robot does,
-                # useless inside an evolutionary loop.
-                viewer.launch(model=self.model, data=self.data)
-            case "simple":
-                # Headless. THIS is the one your EA uses.
-                simple_runner(self.model, self.data, duration=self.SIM_DURATION)
-            case "video":
-                # Render to an mp4 - for the figures in your report.
-                recorder = VideoRecorder(output_folder=str(self.output_folder / "__videos__"))
-                video_renderer(
-                    self.model,
-                    self.data,
-                    duration=self.SIM_DURATION,
-                    video_recorder=recorder,
-                )
-            case "frame":
-                # A single image of the scene. Useful to check your spawn position
-                # and that the robot is not clipping through the floor.
-                single_frame_renderer(self.model, self.data, steps=1, show=True)
-            case "no_control":
-                # No controller attached: drag the hinges around by hand.
-                viewer.launch(model=self.model, data=self.data)
-
-        # Detach the callback again so the next run starts clean.
-        mj.set_mjcb_control(None)
+        try:
+            match mode:
+                case "launcher":
+                    # Interactive window. Great for seeing what your robot does,
+                    # useless inside an evolutionary loop.
+                    viewer.launch(model=self.model, data=self.data)
+                case "simple":
+                    # Headless. THIS is the one your EA uses.
+                    simple_runner(self.model, self.data, duration=self.SIM_DURATION)
+                case "video":
+                    # Render to an mp4 - for the figures in your report.
+                    recorder = VideoRecorder(output_folder=str(self.output_folder / "__videos__"))
+                    video_renderer(
+                        self.model,
+                        self.data,
+                        duration=self.SIM_DURATION,
+                        video_recorder=recorder,
+                    )
+                case "frame":
+                    # A single image of the scene. Useful to check your spawn position
+                    # and that the robot is not clipping through the floor.
+                    single_frame_renderer(self.model, self.data, steps=1, show=True)
+                case "no_control":
+                    # No controller attached: drag the hinges around by hand.
+                    viewer.launch(model=self.model, data=self.data)
+        finally:
+            mj.set_mjcb_control(None)
 
         # --- Score -------------------------------------------------------------- #
+        # Include the final step, which occurs after the last controller callback.
+        record_path(self.data)
         final_position = self.get_core_position(self.data)
-        fitness = self.fitness_function(initial_position, final_position)
+        fitness = self.fitness_function(
+            initial_position, final_position, self.total_path_length,
+        )
 
         console.log(f"start  : {np.round(initial_position, 3)}")
         console.log(f"end    : {np.round(final_position, 3)}")
         console.log(f"target : {np.round(self.TARGET_POSITION, 3)}")
+        console.log(f"path XY: {self.total_path_length:.4f}")
         console.log(f"fitness: {fitness:.4f}   (lower is better)")
 
         return fitness

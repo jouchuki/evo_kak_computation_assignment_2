@@ -38,7 +38,7 @@ type Weights = list[FloatArray]
 type WeightShapes = list[tuple[int, ...]]
 type Genotype = list[float]
 
-type FitnessFunction = Callable[[Position, Position, Position, bool], float]
+type FitnessFunction = Callable[[Position, Position, Position, bool, float], float]
 type FitnessBuilder = Callable[[float], FitnessFunction]
 
 # Two flat parents produce two independent flat children.

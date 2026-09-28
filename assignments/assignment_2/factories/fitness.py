@@ -4,12 +4,14 @@ from typing import ClassVar
 
 import numpy as np
 
+from ariel.simulation.tasks.targeted_locomotion import fitness_direct_path
+
 
 from assignment_types import FitnessBuilder, FitnessFunction, Position
 
 
 class FitnessFactory:
-    """Return a scoring function: FitnessFactory(str)(start, end, target, on_platform)."""
+    """Return a scoring function: FitnessFactory(str)(start, end, target, on_platform, path_length)."""
 
     @staticmethod
     def baseline(fall_penalty: float = 10.0) -> FitnessFunction:
@@ -19,6 +21,7 @@ class FitnessFactory:
             final_position: Position,
             target_position: Position,
             on_platform: bool = True,
+            total_path_length: float = 0.0,
         ) -> float:
             # Keep initial_position in the common interface for future variants.
             return float(np.linalg.norm(final_position[:2] - target_position[:2]))
@@ -32,9 +35,12 @@ class FitnessFactory:
             final_position: Position,
             target_position: Position,
             on_platform: bool,
+            total_path_length: float,
         ) -> float:
-            distance = float(np.linalg.norm(final_position[:2] - target_position[:2]))
-            return distance + (0.0 if on_platform else fall_penalty)
+            score = fitness_direct_path(
+                initial_position, final_position, target_position, total_path_length,
+            )
+            return score + (0.0 if on_platform else fall_penalty)
 
         return evaluate
 
