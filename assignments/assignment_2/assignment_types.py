@@ -25,6 +25,7 @@ type AllowedRobotTypes = Literal[
     "centipede_5",
     ]
 
+type WeightInitType = Literal["normal", "xavier_uniform"]
 type FitnessType = Literal["baseline", "improved"]
 type ParentSelectionType = Literal["tournament", "uniform"]
 type SurvivorSelectionType = Literal["round_robin_tournament", "mu_plus_lambda"]

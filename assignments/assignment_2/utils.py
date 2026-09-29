@@ -1,5 +1,6 @@
 from assignment_types import Genotype, Weights, WeightShapes
 import numpy as np
+import torch
 from settings import settings
 
 
@@ -25,6 +26,26 @@ def make_random_weights(
         rng.normal(scale=0.5, size=(input_size, hidden_size)),
         rng.normal(scale=0.5, size=(hidden_size, output_size)),
     ]
+
+
+def make_xavier_weights(
+    input_size: int,
+    output_size: int,
+    rng: np.random.Generator,
+    *,
+    hidden_size: int = settings.HIDDEN_SIZE,
+) -> Weights:
+    """Initialize both tanh layers with PyTorch's Xavier uniform distribution."""
+    generator = torch.Generator(device="cpu")
+    generator.manual_seed(int(rng.integers(0, np.iinfo(np.int64).max)))
+    gain = torch.nn.init.calculate_gain("tanh")
+    weights: Weights = []
+    for fan_in, fan_out in [(input_size, hidden_size), (hidden_size, output_size)]:
+        # Torch expects (out, in); the NumPy controller uses inputs @ weights.
+        layer = torch.empty((fan_out, fan_in), dtype=torch.float64)
+        torch.nn.init.xavier_uniform_(layer, gain=gain, generator=generator)
+        weights.append(layer.T.numpy().copy())
+    return weights
 
 
 def flatten_weights(weights: Weights) -> Genotype:

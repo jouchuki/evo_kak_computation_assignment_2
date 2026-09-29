@@ -1,22 +1,33 @@
-# OlympicArena rhythm experiment.
-# Per seed: 128 initial evaluations + 64 offspring x 400 generations = 25,728.
+# SimpleFlatWorld: scaled inputs, rhythm and Xavier uniform initialization.
+# Per seed: 128 initial evaluations + 64 offspring x 100 generations = 6,528.
 SEEDS: [42]
 ROBOT: iguana
-WORLD: OlympicArena
+WORLD: SimpleFlatWorld
 SPAWN_POS: [0.0, 0.0, 0.1]
-SIM_DURATION: 90.0
+SIM_DURATION: 120.0
 MODE: simple
 HIDDEN_SIZE: 20
+WEIGHT_INIT: xavier_uniform
 RHYTHM_FREQUENCY: 1.0  # Hz: one full sine/cosine cycle per simulated second.
 
+# Fixed input divisors, not clipping or unit-vector normalization.
+# Starting values to test; values can exceed [-1, 1].
+NORMALIZE_INPUTS: true
+TARGET_INPUTS: true  # Append (target XY - robot XY), using POSITION_SCALE.
+POSITION_SCALE: 5.0          # metres
+JOINT_ANGLE_SCALE: 1.5707963267948966  # radians (pi/2)
+LINEAR_VELOCITY_SCALE: 1.0   # metres/second
+ANGULAR_VELOCITY_SCALE: 5.0  # radians/second
+JOINT_VELOCITY_SCALE: 10.0   # radians/second
+
 TARGET_POPULATION_SIZE: 128
-NUM_STEPS: 400
+NUM_STEPS: 100
 # Separate from the previous run. Change this name for another saved run.
-RUN_NAME: olympic_rhythm_speed_pop128_gen400
+RUN_NAME: iguana_target_inputs_120s_v1
 
 # baseline: remaining XY distance.
 # improved: ARIEL direct-path score (distance change + 0.5 * excess path) + fall penalty.
-FITNESS_TYPE: improved
+FITNESS_TYPE: baseline
 FALL_PENALTY: 10.0
 # Adds weight * (mean XY distance to target / initial XY distance).
 # Standing still adds 1; earlier progress reduces it. Set 0 to disable.
@@ -41,5 +52,5 @@ TOURNAMENT_SIZE: 2              # k contestants per independent tournament.
 TOURNAMENT_WITH_REPLACEMENT: false  # Within a tournament; repeat winners are allowed.
 
 # round_robin_tournament or mu_plus_lambda.
-SURVIVOR_SELECTION_TYPE: round_robin_tournament
+SURVIVOR_SELECTION_TYPE: mu_plus_lambda
 ROUND_ROBIN_OPPONENTS: 10        # q distinct others per candidate; only round-robin.

@@ -3,7 +3,7 @@ from pydantic import Field
 # import numpy as np
 from pathlib import Path
 import yaml
-from assignment_types import AllowedRobotTypes, AllowedWorldTypes, CrossoverType, FitnessType, MutateType, ParentSelectionType, SurvivorSelectionType, ViewerTypes
+from assignment_types import WeightInitType, AllowedRobotTypes, AllowedWorldTypes, CrossoverType, FitnessType, MutateType, ParentSelectionType, SurvivorSelectionType, ViewerTypes
 
 class ExperimentConfig(BaseSettings):
 
@@ -21,7 +21,17 @@ class ExperimentConfig(BaseSettings):
     MODE: ViewerTypes = "launcher"  # see run_experiment() for the options
 
     HIDDEN_SIZE: int = 6
+    WEIGHT_INIT: WeightInitType = "normal"
     RHYTHM_FREQUENCY: float = Field(default=1.0, gt=0.0, allow_inf_nan=False)  # Hz
+    # Fixed divisors; old configurations retain the original raw inputs.
+    NORMALIZE_INPUTS: bool = False
+    TARGET_INPUTS: bool = False  # Enable two extra target-offset channels.
+    POSITION_SCALE: float = Field(default=5.0, gt=0.0, allow_inf_nan=False)
+    JOINT_ANGLE_SCALE: float = Field(default=1.5707963267948966, gt=0.0, allow_inf_nan=False)
+    LINEAR_VELOCITY_SCALE: float = Field(default=1.0, gt=0.0, allow_inf_nan=False)
+    ANGULAR_VELOCITY_SCALE: float = Field(default=5.0, gt=0.0, allow_inf_nan=False)
+    JOINT_VELOCITY_SCALE: float = Field(default=10.0, gt=0.0, allow_inf_nan=False)
+
     FITNESS_TYPE: FitnessType = "baseline"
     FALL_PENALTY: float = Field(default=10.0, ge=0.0, allow_inf_nan=False)
     SPEED_PENALTY: float = Field(default=0.0, ge=0.0, allow_inf_nan=False)

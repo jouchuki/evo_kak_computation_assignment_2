@@ -22,7 +22,7 @@ import random
 import numpy as np
 
 
-from utils import make_random_weights, flatten_weights, unflatten_weights
+from utils import make_random_weights, make_xavier_weights, flatten_weights, unflatten_weights
 from simulation import RobotSimulation
 from settings import settings
 from factories import (
@@ -112,6 +112,12 @@ class RobotEA:
         # to input/hidden/output easily from the class itself
         # TODO: migrate to torch nn sequential htis is unbearable
 
+        self._make_weights = (
+            make_xavier_weights
+            if experiment_settings.WEIGHT_INIT == "xavier_uniform"
+            else make_random_weights
+        )
+
         self.INPUT, self.OUTPUT= self.simulation.INPUT_SIZE, self.simulation.OUTPUT_SIZE
         
         self.weight_shapes: WeightShapes = [
@@ -132,7 +138,7 @@ class RobotEA:
 
     def _make_individual(self) -> Individual:
         ind = Individual()
-        ind.genotype = flatten_weights(make_random_weights(
+        ind.genotype = flatten_weights(self._make_weights(
             self.INPUT, self.OUTPUT, self.rng,
             hidden_size=self.simulation.HIDDEN_SIZE,
         ))

@@ -114,7 +114,16 @@ class RobotSimulation:
         # now. we will see
         # Two extra channels give the controller a repeating sine/cosine clock.
         self.INPUT_SIZE = len(self.data.qpos) + len(self.data.qvel) + 2
+        if settings.TARGET_INPUTS:
+            self.INPUT_SIZE += 2
         self.OUTPUT_SIZE = self.model.nu
+
+        if settings.NORMALIZE_INPUTS and (
+            self.model.njnt == 0
+            or self.model.jnt_type[0] != mj.mjtJoint.mjJNT_FREE
+            or np.any(self.model.jnt_type[1:] != mj.mjtJoint.mjJNT_HINGE)
+        ):
+            raise ValueError("Input scaling expects one free root joint followed by hinges")
 
         # check geoms for understanding how to interact with the arena
         # collect arena boundaries to understand the runs where the robot is falling from the arena
@@ -161,6 +170,29 @@ class RobotSimulation:
 
                 self.boundaries[geom.name] = (minxyz, maxxyz)
 
+    def controller_inputs(self, data: mj.MjData) -> FloatArray:
+        phase = 2 * np.pi * self.settings.RHYTHM_FREQUENCY * data.time
+        rhythm = np.array([np.sin(phase), np.cos(phase)])
+        # World XY displacement from the robot to the target.
+        target_offset = (
+            np.asarray(self.TARGET_POSITION[:2]) - data.qpos[:2]
+            if self.settings.TARGET_INPUTS else np.empty(0)
+        )
+        if not self.settings.NORMALIZE_INPUTS:
+            return np.concatenate((data.qpos, data.qvel, rhythm, target_offset))
+
+        # One free root joint, then hinges. Never modify MuJoCo's state in place.
+        return np.concatenate((
+            data.qpos[:3] / self.settings.POSITION_SCALE,
+            data.qpos[3:7],  # Unit quaternion: leave unchanged.
+            data.qpos[7:] / self.settings.JOINT_ANGLE_SCALE,
+            data.qvel[:3] / self.settings.LINEAR_VELOCITY_SCALE,
+            data.qvel[3:6] / self.settings.ANGULAR_VELOCITY_SCALE,
+            data.qvel[6:] / self.settings.JOINT_VELOCITY_SCALE,
+            rhythm,  # Already bounded to [-1, 1].
+            target_offset / self.settings.POSITION_SCALE,
+        ))
+
     def nn_controller(
         self,
         model: mj.MjModel,
@@ -185,10 +217,7 @@ class RobotSimulation:
         w1, w2 = weights
 
         # --- INPUTS ---------------------------------------------------------- #
-        # Simulation time resets each evaluation, so the rhythm does too.
-        phase = 2 * np.pi * self.settings.RHYTHM_FREQUENCY * data.time
-        rhythm = np.array([np.sin(phase), np.cos(phase)])
-        inputs = np.concatenate((data.qpos, data.qvel, rhythm))
+        inputs = self.controller_inputs(data)
 
         # --- FORWARD PASS ----------------------------------------------------- #
         layer1 = np.tanh(inputs @ w1)
