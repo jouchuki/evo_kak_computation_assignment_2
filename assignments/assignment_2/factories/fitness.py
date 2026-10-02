@@ -11,7 +11,7 @@ from assignment_types import FitnessBuilder, FitnessFunction, Position
 
 
 class FitnessFactory:
-    """Return a scoring function: FitnessFactory(str)(start, end, target, on_platform, path_length, mean_target_distance)."""
+    """Return a scorer taking positions, platform status, path length, arrival time and duration."""
 
     @staticmethod
     def baseline(fall_penalty: float = 10.0, speed_penalty: float = 0.0) -> FitnessFunction:
@@ -22,7 +22,8 @@ class FitnessFactory:
             target_position: Position,
             on_platform: bool = True,
             total_path_length: float = 0.0,
-            mean_target_distance: float = 0.0,
+            first_arrival_seconds: float | None = None,
+            simulation_duration: float = 1.0,
         ) -> float:
             # Keep initial_position in the common interface for future variants.
             return float(np.linalg.norm(final_position[:2] - target_position[:2]))
@@ -37,15 +38,17 @@ class FitnessFactory:
             target_position: Position,
             on_platform: bool,
             total_path_length: float,
-            mean_target_distance: float = 0.0,
+            first_arrival_seconds: float | None,
+            simulation_duration: float,
         ) -> float:
             score = fitness_direct_path(
                 initial_position, final_position, target_position, total_path_length,
             )
-            # Normalized distance over time rewards earlier progress toward the target.
-            initial_distance = float(np.linalg.norm(initial_position[:2] - target_position[:2]))
-            slow_penalty = speed_penalty * mean_target_distance / max(initial_distance, 1e-6)
-            return score + slow_penalty + (0.0 if on_platform else fall_penalty)
+            # Never arriving costs 1; earlier first arrival costs less.
+            arrival_penalty = 1.0 if first_arrival_seconds is None else float(
+                np.clip(first_arrival_seconds / max(simulation_duration, 1e-6), 0.0, 1.0)
+            )
+            return score + speed_penalty * arrival_penalty + (0.0 if on_platform else fall_penalty)
 
         return evaluate
 

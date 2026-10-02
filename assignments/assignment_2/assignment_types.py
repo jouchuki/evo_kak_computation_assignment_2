@@ -38,8 +38,11 @@ type Coordinates = tuple[float, float, float]
 type Weights = list[FloatArray]
 type WeightShapes = list[tuple[int, ...]]
 type Genotype = list[float]
+type RolloutMetrics = dict[str, float | bool | None]
+type EvaluationResult = tuple[float, RolloutMetrics]
+type EvaluationMap = Callable[[list[Genotype]], list[EvaluationResult]]
 
-type FitnessFunction = Callable[[Position, Position, Position, bool, float, float], float]
+type FitnessFunction = Callable[[Position, Position, Position, bool, float, float | None, float], float]
 type FitnessBuilder = Callable[[float, float], FitnessFunction]
 
 # Two flat parents produce two independent flat children.

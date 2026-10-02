@@ -29,8 +29,8 @@ RUN_NAME: iguana_target_inputs_120s_v1
 # improved: ARIEL direct-path score (distance change + 0.5 * excess path) + fall penalty.
 FITNESS_TYPE: baseline
 FALL_PENALTY: 10.0
-# Adds weight * (mean XY distance to target / initial XY distance).
-# Standing still adds 1; earlier progress reduces it. Set 0 to disable.
+# Adds weight * (first arrival time / duration), or weight if never reached.
+# Arrival means entering SUCCESS_RADIUS in XY. Set 0 to disable.
 SPEED_PENALTY: 1.0
 
 # Available: "none" (copy parents, then mutate), one_point, n_point, uniform.

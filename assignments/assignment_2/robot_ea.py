@@ -2,7 +2,7 @@
 
 from typing import cast
 
-from assignment_types import Genotype, MatingPool, WeightShapes
+from assignment_types import EvaluationMap, Genotype, MatingPool, WeightShapes
 
 from rich.console import Console
 from rich.traceback import install
@@ -24,7 +24,7 @@ import numpy as np
 
 from utils import make_random_weights, make_xavier_weights, flatten_weights, unflatten_weights
 from simulation import RobotSimulation
-from settings import settings
+# from settings import settings
 from factories import (
     CrossoverFactory, MutateFactory, ParentSelectionFactory, SurvivorSelectionFactory,
 )
@@ -46,12 +46,15 @@ class RobotEA:
             *,
             seed: int,
             simulation: RobotSimulation | None = None,
+            evaluation_map: EvaluationMap | None = None,
             ) -> None:
 
         # we need the output folder always set
         assert config_output_folder is not None and isinstance(config_output_folder, pathlib.Path) 
 
         self.seed = seed
+        self.evaluation_map = evaluation_map
+        self.evaluation_count = 0
         set_seed(seed)
         random.seed(seed)  # Population.shuffle/sample use python random
         self.rng = np.random.default_rng(seed)
@@ -125,7 +128,7 @@ class RobotEA:
             (self.simulation.HIDDEN_SIZE, self.OUTPUT)
         ]
 
-        self.population = Population([self._make_individual() 
+        self.population = Population([self.make_individual()
                                       for _ in range(config.target_population_size)])
 
         self.ops: list[EAOperation[...]] = [
@@ -136,7 +139,7 @@ class RobotEA:
                     EAOperation(self.survivor_selection),
                 ]
 
-    def _make_individual(self) -> Individual:
+    def make_individual(self) -> Individual:
         ind = Individual()
         ind.genotype = flatten_weights(self._make_weights(
             self.INPUT, self.OUTPUT, self.rng,
@@ -145,13 +148,26 @@ class RobotEA:
         return ind
 
     def evaluate(self, population: Population) -> Population:
+        pending = list(population.unevaluated)
+        if self.evaluation_map is not None:
+            results = self.evaluation_map([cast(Genotype, ind.genotype) for ind in pending])
+            if len(results) != len(pending):
+                raise ValueError("Evaluator must return exactly one result per individual")
+            for ind, (score, metrics) in zip(pending, results, strict=True):
+                self.evaluation_count += 1
+                ind.fitness = score
+                ind.tags = {
+                    **ind.tags, "evaluation_index": self.evaluation_count,
+                    **{key: value for key, value in metrics.items() if value is not None},
+                }
+            return population
 
-        for ind in population.unevaluated:
+        for ind in pending:
             weights = unflatten_weights(
                 cast(Genotype, ind.genotype),
                 self.weight_shapes,
             )
-            ind.fitness = self.simulation.run_experiment(ind_weights=weights, mode=settings.MODE)
+            ind.fitness = self.simulation.run_experiment(ind_weights=weights, mode=self.simulation.settings.MODE)
 
         return population
 
@@ -193,7 +209,7 @@ class RobotEA:
     def survivor_selection(self, population: Population) -> Population:
         return self._survivor_selection(population)
 
-    def run(self) -> Population:
+    def run(self, *, render_video: bool = True, report_examples: bool = True) -> Population:
         # survivor_selection culls down to this; keep it in line with the seed size.
         self.population = self.evaluate(self.population)
 
@@ -210,7 +226,11 @@ class RobotEA:
             cast(Genotype, best.genotype),
             self.weight_shapes,
         )
-        self.simulation.run_experiment(ind_weights=weights, mode="video")
+        if render_video:
+            self.simulation.run_experiment(ind_weights=weights, mode="video")
+
+        if not report_examples:
+            return self.ea.population
     
         console.log("--- Results ---")
         console.log(f"best = {self.ea.get_solution('best', only_alive=False)}")

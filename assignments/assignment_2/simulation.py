@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from settings import settings, ExperimentConfig
-from assignment_types import Coordinates, FloatArray, Position, ViewerTypes, Weights
+from assignment_types import Coordinates, FloatArray, Position, RolloutMetrics, ViewerTypes, Weights
 from ariel.simulation.environments import BaseWorld, SimpleFlatWorld, RuggedTerrainWorld, AmphitheatreTerrainWorld, OlympicArena, CraterTerrainWorld
 from ariel.body_phenotypes.robogen_lite.prebuilt_robots.john_set import (
     baby_a,
@@ -81,6 +81,7 @@ class RobotSimulation:
         self.rng = rng if rng is not None else np.random.default_rng()
         self.total_path_length = 0.0
         self.mean_target_distance = 0.0
+        self.last_metrics: RolloutMetrics = {}
 
         self.world: BaseWorld = WORLD_TYPES[self.settings.WORLD]()
         self.robot: CoreModule = ROBOT_TYPES[self.settings.ROBOT]()
@@ -237,6 +238,7 @@ class RobotSimulation:
         initial_position: Position,
         final_position: Position,
         total_path_length: float,
+        first_arrival_seconds: float | None,
     ) -> float:
         """Score one evaluation using the configured fitness. Lower is better."""
         return self._fitness(
@@ -245,7 +247,8 @@ class RobotSimulation:
             np.asarray(self.TARGET_POSITION, dtype=np.float64),
             self.if_onplatform(final_position) if self.settings.FITNESS_TYPE == "improved" else True,
             total_path_length,
-            self.mean_target_distance,
+            first_arrival_seconds,
+            self.SIM_DURATION,
         )
 
     # nothingburger engineering
@@ -311,7 +314,7 @@ class RobotSimulation:
             raise KeyError(e, "no geom with this name found")
         
 
-    def run_experiment(self, ind_weights: Weights | None = None, mode: ViewerTypes | None = None) -> float:
+    def run_experiment(self, ind_weights: Weights | None = None, mode: ViewerTypes | None = None, *, quiet: bool = False) -> float:
         """Set up the world, run one simulation, and return the fitness.
 
         This is the function your EA calls once per individual, with `mode` set
@@ -347,15 +350,22 @@ class RobotSimulation:
         distance_integral = 0.0
         self.mean_target_distance = previous_distance
         self.total_path_length = 0.0
+        min_distance = previous_distance
+        first_arrival = 0.0 if previous_distance <= self.settings.SUCCESS_RADIUS else None
+        self.last_metrics = {}
 
         def record_path(d: mj.MjData) -> None:
             nonlocal previous_xy, previous_time, previous_distance, distance_integral
+            nonlocal min_distance, first_arrival
             # Rendering/forward calls can invoke the callback again at the same time.
             if d.time <= previous_time:
                 return
             current_xy = d.qpos[:2].copy()
             self.total_path_length += float(np.linalg.norm(current_xy - previous_xy))
             current_distance = float(np.linalg.norm(current_xy - target_xy))
+            min_distance = min(min_distance, current_distance)
+            if first_arrival is None and current_distance <= self.settings.SUCCESS_RADIUS:
+                first_arrival = float(d.time - initial_time)
             distance_integral += 0.5 * (previous_distance + current_distance) * (d.time - previous_time)
             previous_distance = current_distance
             previous_xy = current_xy
@@ -413,8 +423,22 @@ class RobotSimulation:
         record_path(self.data)
         final_position = self.get_core_position(self.data)
         fitness = self.fitness_function(
-            initial_position, final_position, self.total_path_length,
+            initial_position, final_position, self.total_path_length, first_arrival,
         )
+        final_distance = float(np.linalg.norm(final_position[:2] - target_xy))
+        self.last_metrics = {
+            "final_distance": final_distance,
+            "mean_target_distance": self.mean_target_distance,
+            "min_distance": min_distance,
+            "first_arrival_seconds": first_arrival,
+            "reached_target": first_arrival is not None,
+            "ended_at_target": final_distance <= self.settings.SUCCESS_RADIUS,
+            "path_length": self.total_path_length,
+            "simulated_seconds": float(self.data.time - initial_time),
+        }
+
+        if quiet:
+            return fitness
 
         console.log(f"start  : {np.round(initial_position, 3)}")
         console.log(f"end    : {np.round(final_position, 3)}")
