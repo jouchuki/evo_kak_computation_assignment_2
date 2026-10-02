@@ -42,8 +42,8 @@ type RolloutMetrics = dict[str, float | bool | None]
 type EvaluationResult = tuple[float, RolloutMetrics]
 type EvaluationMap = Callable[[list[Genotype]], list[EvaluationResult]]
 
-type FitnessFunction = Callable[[Position, Position, Position, bool, float, float | None, float], float]
-type FitnessBuilder = Callable[[float, float], FitnessFunction]
+type FitnessFunction = Callable[[Position, Position, Position, float | None, float, float], float]
+type FitnessBuilder = Callable[[float], FitnessFunction]
 
 # Two flat parents produce two independent flat children.
 type CrossoverFunction = Callable[[Genotype, Genotype], tuple[Genotype, Genotype]]

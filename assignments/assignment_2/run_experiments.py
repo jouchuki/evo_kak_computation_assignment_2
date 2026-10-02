@@ -78,9 +78,9 @@ def main(study_path: Path = HERE / "experiments.yaml") -> None:
     name = study["name"]
     if not isinstance(name, str) or name in ("", ".", "..") or Path(name).name != name:
         raise ValueError("Study name must be a single directory name")
-    weight = float(study["progress_weight"])
-    if not np.isfinite(weight) or weight <= 0:
-        raise ValueError("progress_weight must be positive and finite")
+    weight = float(study["alpha"])
+    if not np.isfinite(weight) or not 0 < weight <= 1:
+        raise ValueError("alpha must be in (0, 1]")
     cfg = ExperimentConfig(**base)
     if cfg.WORLD != "SimpleFlatWorld":
         raise ValueError("This study uses SimpleFlatWorld; random terrain needs a shared snapshot")

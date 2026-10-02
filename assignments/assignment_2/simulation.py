@@ -74,7 +74,7 @@ class RobotSimulation:
     ) -> None:
         self.settings = settings
         self._fitness = FitnessFactory(
-            settings.FITNESS_TYPE, fall_penalty=settings.FALL_PENALTY,
+            settings.FITNESS_TYPE,
             speed_penalty=settings.SPEED_PENALTY,
         )
         self.output_folder = output_folder if output_folder is not None else settings.DATA
@@ -237,18 +237,17 @@ class RobotSimulation:
         self,
         initial_position: Position,
         final_position: Position,
-        total_path_length: float,
         first_arrival_seconds: float | None,
+        time_inside_target: float,
     ) -> float:
         """Score one evaluation using the configured fitness. Lower is better."""
         return self._fitness(
             initial_position,
             final_position,
             np.asarray(self.TARGET_POSITION, dtype=np.float64),
-            self.if_onplatform(final_position) if self.settings.FITNESS_TYPE == "improved" else True,
-            total_path_length,
             first_arrival_seconds,
             self.SIM_DURATION,
+            time_inside_target,
         )
 
     # nothingburger engineering
@@ -352,19 +351,27 @@ class RobotSimulation:
         self.total_path_length = 0.0
         min_distance = previous_distance
         first_arrival = 0.0 if previous_distance <= self.settings.SUCCESS_RADIUS else None
+        time_inside_target = 0.0
         self.last_metrics = {}
 
         def record_path(d: mj.MjData) -> None:
             nonlocal previous_xy, previous_time, previous_distance, distance_integral
-            nonlocal min_distance, first_arrival
+            nonlocal min_distance, first_arrival, time_inside_target
             # Rendering/forward calls can invoke the callback again at the same time.
             if d.time <= previous_time:
                 return
+            # Count each interval using its starting position, capped at the rollout duration.
+            if previous_distance <= self.settings.SUCCESS_RADIUS:
+                time_inside_target += (
+                    min(float(d.time) - initial_time, self.SIM_DURATION)
+                    - min(previous_time - initial_time, self.SIM_DURATION)
+                )
             current_xy = d.qpos[:2].copy()
             self.total_path_length += float(np.linalg.norm(current_xy - previous_xy))
             current_distance = float(np.linalg.norm(current_xy - target_xy))
             min_distance = min(min_distance, current_distance)
-            if first_arrival is None and current_distance <= self.settings.SUCCESS_RADIUS:
+            if (first_arrival is None and current_distance <= self.settings.SUCCESS_RADIUS
+                    and d.time - initial_time <= self.SIM_DURATION + 1e-9):
                 first_arrival = float(d.time - initial_time)
             distance_integral += 0.5 * (previous_distance + current_distance) * (d.time - previous_time)
             previous_distance = current_distance
@@ -423,7 +430,7 @@ class RobotSimulation:
         record_path(self.data)
         final_position = self.get_core_position(self.data)
         fitness = self.fitness_function(
-            initial_position, final_position, self.total_path_length, first_arrival,
+            initial_position, final_position, first_arrival, time_inside_target,
         )
         final_distance = float(np.linalg.norm(final_position[:2] - target_xy))
         self.last_metrics = {
@@ -431,6 +438,7 @@ class RobotSimulation:
             "mean_target_distance": self.mean_target_distance,
             "min_distance": min_distance,
             "first_arrival_seconds": first_arrival,
+            "time_inside_target": time_inside_target,
             "reached_target": first_arrival is not None,
             "ended_at_target": final_distance <= self.settings.SUCCESS_RADIUS,
             "path_length": self.total_path_length,
@@ -445,6 +453,7 @@ class RobotSimulation:
         console.log(f"target : {np.round(self.TARGET_POSITION, 3)}")
         console.log(f"path XY: {self.total_path_length:.4f}")
         console.log(f"mean target distance: {self.mean_target_distance:.4f}")
+        console.log(f"time inside target: {time_inside_target:.3f} s")
         console.log(f"fitness: {fitness:.4f}   (lower is better)")
 
         return fitness

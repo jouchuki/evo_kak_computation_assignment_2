@@ -33,8 +33,8 @@ class ExperimentConfig(BaseSettings):
     JOINT_VELOCITY_SCALE: float = Field(default=10.0, gt=0.0, allow_inf_nan=False)
 
     FITNESS_TYPE: FitnessType = "baseline"
-    FALL_PENALTY: float = Field(default=10.0, ge=0.0, allow_inf_nan=False)
-    SPEED_PENALTY: float = Field(default=0.0, ge=0.0, allow_inf_nan=False)
+    FALL_PENALTY: float = Field(default=10.0, ge=0.0, allow_inf_nan=False)  # Legacy config compatibility; unused.
+    SPEED_PENALTY: float = Field(default=0.0, ge=0.0, le=1.0, allow_inf_nan=False)
     SUCCESS_RADIUS: float = Field(default=0.1, gt=0.0, allow_inf_nan=False)
 
     # population and run settings

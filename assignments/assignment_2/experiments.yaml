@@ -1,10 +1,9 @@
 # Base settings plus explicit overrides; config.yaml is never rewritten.
 base: config.yaml
-name: progress_study_v1
+name: reach_stay_study_v1
 seeds: [42, 321, 1337, 313, 58]
 methods: [baseline, improved, random]
 workers: 8  # Half of this laptop's 16 logical CPUs; runs execute sequentially.
 output: __data__/experiments  # Relative to the repository root.
-progress_weight: 1.0  # Weight of first-arrival time / duration; never arriving costs 1.
-# Both EA conditions use the existing improved fitness (path + fall terms).
-# Experimental baseline: SPEED_PENALTY=0; improved: SPEED_PENALTY=progress_weight.
+alpha: 1.0  # Arrival-time weight for improved; baseline and random use 0.
+# All conditions rank success first and reward time spent inside the target radius.
