@@ -26,7 +26,8 @@ NUM_STEPS: 100
 RUN_NAME: iguana_target_inputs_120s_v1
 
 # baseline: remaining XY distance.
-# improved: success first, then time inside the target and optional arrival-time cost.
+# improved: success first, then retention after arrival and optional arrival-time cost.
+# Retention = time inside / (duration - first arrival); zero if arrival is at duration.
 FITNESS_TYPE: baseline
 # Alpha in [0, 1]: adds alpha * (first arrival time / duration) after success.
 # Never reaching scores 3 + final_distance / initial_distance. Set alpha=0 to omit timing.
@@ -40,7 +41,7 @@ CROSSOVER_SWAP_PROB: 0.5  # Per-gene swap probability; used only by uniform.
 # Available: gaussian, uniform_reset, "none".
 MUTATION_TYPE: gaussian
 MUTATION_PROB: 0.2       # Probability per weight.
-MUTATION_STD: 0.5        # Gaussian noise standard deviation.
+MUTATION_STD: 0.05       # Gaussian noise standard deviation.
 MUTATION_LOW: -1.0      # Uniform reset lower bound (inclusive).
 MUTATION_HIGH: 1.0      # Uniform reset upper bound (exclusive).
 

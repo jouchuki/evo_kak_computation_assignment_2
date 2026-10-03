@@ -28,6 +28,12 @@ class FitnessFactory:
 
     @staticmethod
     def improved(speed_penalty: float = 0.0) -> FitnessFunction:
+        """Reward retention after first arrival, with an optional arrival-time cost.
+
+        Retention is time inside divided by the time remaining after arrival.
+        Arrival at the horizon receives zero retention credit: no staying time
+        has been observed. Success still always outranks failure.
+        """
         def evaluate(
             initial_position: Position,
             final_position: Position,
@@ -41,8 +47,13 @@ class FitnessFactory:
                 final_distance = float(np.linalg.norm(final_position[:2] - target_position[:2]))
                 return 3.0 + final_distance / max(initial_distance, 1e-6)
             duration = max(simulation_duration, 1e-6)
-            inside_fraction = float(np.clip(time_inside_target / duration, 0.0, 1.0))
-            arrival_fraction = float(np.clip(first_arrival_seconds / duration, 0.0, 1.0))
+            arrival_seconds = float(np.clip(first_arrival_seconds, 0.0, duration))
+            remaining_seconds = duration - arrival_seconds
+            inside_fraction = (
+                float(np.clip(time_inside_target / remaining_seconds, 0.0, 1.0))
+                if remaining_seconds > 0.0 else 0.0
+            )
+            arrival_fraction = arrival_seconds / duration
             return 1.0 - inside_fraction + speed_penalty * arrival_fraction
 
         return evaluate

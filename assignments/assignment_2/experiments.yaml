@@ -1,9 +1,16 @@
 # Base settings plus explicit overrides; config.yaml is never rewritten.
 base: config.yaml
-name: reach_stay_study_v1
-seeds: [42, 321, 1337, 313, 58]
+name: reach_stay_study_30s_g100_k5_sd005_15seeds
+seeds: [42, 321, 1337, 313, 58, 7, 19, 73, 101, 202, 404, 808, 1024, 2026, 4096]
 methods: [baseline, improved, random]
 workers: 8  # Half of this laptop's 16 logical CPUs; runs execute sequentially.
 output: __data__/experiments  # Relative to the repository root.
 alpha: 1.0  # Arrival-time weight for improved; baseline and random use 0.
-# All conditions rank success first and reward time spent inside the target radius.
+# All conditions rank success first and reward the fraction of time remaining
+# after first arrival spent inside the target radius (T - arrival, not T as in v1).
+# Arrival exactly at T receives zero retention credit.
+overrides:
+  TOURNAMENT_SIZE: 5  # Shared by both EA conditions; random search does not select parents.
+  NUM_STEPS: 100  # 128 initial + 64 offspring x 100 = 6,528 evaluations per run.
+  SIM_DURATION: 30.0  # Same evaluation horizon as the seed-42 pilots.
+  MUTATION_STD: 0.05  # Shared mutation strength chosen after the exploratory diagnostic.
