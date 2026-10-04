@@ -1,4 +1,7 @@
 ### PROJECT #####################################################################
+# Local agent configuration
+.codex/
+.agents/
 # Videos
 *.mp4
 # Dirs
